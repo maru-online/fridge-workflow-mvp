@@ -1,0 +1,27 @@
+{
+  "name": "fridge-workflow-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "cd web && npm run dev",
+    "build": "cd web && npm run build",
+    "start": "cd web && npm run start",
+    "lint": "cd web && npm run lint",
+    "install:web": "cd web && npm install",
+    "install:all": "npm run install:web"
+  },
+  "description": "Fridge Workflow MVP - WhatsApp-based fridge buying and repair service",
+  "repository": {
+    "type": "git",
+    "url": "."
+  },
+  "keywords": [
+    "whatsapp",
+    "fridge",
+    "workflow",
+    "nextjs",
+    "supabase"
+  ],
+  "author": "",
+  "license": "ISC"
+}

@@ -1,24 +1,54 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/utils/supabase/client'
 
 export default function ManualEntryPage() {
     const router = useRouter()
+    const supabase = createClient()
     const [code, setCode] = useState('')
     const [isVerifying, setIsVerifying] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        setError(null)
         setIsVerifying(true)
         
-        // Mock verification delay
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // Redirect to fridge details/action page
-        router.push(`/runner/fridge/${code}`)
+        try {
+            // Validate code format
+            const codePattern = /^(SELL|REP)-\d{8}-\d{3}$/
+            const normalizedCode = code.trim().toUpperCase()
+            
+            if (!codePattern.test(normalizedCode)) {
+                setError('Invalid code format. Expected format: SELL-YYYYMMDD-XXX or REP-YYYYMMDD-XXX')
+                setIsVerifying(false)
+                return
+            }
+
+            // Verify code exists in database
+            const { data: ticket, error: ticketError } = await supabase
+                .from('tickets')
+                .select('id, fridge_code, status')
+                .eq('fridge_code', normalizedCode)
+                .single()
+
+            if (ticketError || !ticket) {
+                setError('Code not found. Please check the code and try again, or contact support.')
+                setIsVerifying(false)
+                return
+            }
+
+            // Redirect to fridge details/action page
+            router.push(`/runner/fridge/${normalizedCode}`)
+        } catch (err: any) {
+            console.error('Error verifying code:', err)
+            setError('Failed to verify code. Please check your connection and try again.')
+            setIsVerifying(false)
+        }
     }
 
     return (
@@ -45,12 +75,27 @@ export default function ManualEntryPage() {
                             <input
                                 type="text"
                                 value={code}
-                                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                                placeholder="F-XXXX"
-                                className="w-full text-center text-3xl font-mono tracking-widest font-bold text-slate-800 border-2 border-slate-200 rounded-xl p-4 focus:border-brand-blue focus:ring-4 focus:ring-blue-50 outline-none transition-all placeholder:text-slate-300 uppercase"
+                                onChange={(e) => {
+                                    setCode(e.target.value.toUpperCase())
+                                    setError(null)
+                                }}
+                                placeholder="SELL-20250122-001"
+                                className={`w-full text-center text-2xl font-mono tracking-widest font-bold text-slate-800 border-2 rounded-xl p-4 focus:ring-4 focus:ring-blue-50 outline-none transition-all placeholder:text-slate-300 uppercase ${
+                                    error ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-brand-blue'
+                                }`}
                                 autoFocus
                             />
+                            <p className="text-xs text-slate-500 mt-2 text-center">
+                                Format: SELL-YYYYMMDD-XXX or REP-YYYYMMDD-XXX
+                            </p>
                         </div>
+
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+                                <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={16} />
+                                <p className="text-sm text-red-700">{error}</p>
+                            </div>
+                        )}
 
                         <button
                             type="submit"
@@ -58,7 +103,10 @@ export default function ManualEntryPage() {
                             className="w-full bg-brand-blue text-white font-bold text-lg py-4 rounded-xl shadow-lg hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                         >
                             {isVerifying ? (
-                                <span>Verifying...</span>
+                                <>
+                                    <Loader2 className="animate-spin" size={20} />
+                                    <span>Verifying...</span>
+                                </>
                             ) : (
                                 <>
                                     Verify Code

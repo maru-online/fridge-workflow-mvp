@@ -1,6 +1,8 @@
 import { login, signup, signInWithGoogle, signInWithApple } from './actions'
 
-export default function LoginPage() {
+export default function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
+  const error = searchParams?.error
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
        <div className="max-w-md w-full p-8 bg-white rounded-xl shadow-lg border border-slate-100">
@@ -10,12 +12,23 @@ export default function LoginPage() {
              <p className="text-slate-500 mt-2">Enter your credentials to access the dashboard</p>
           </div>
 
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {decodeURIComponent(error)}
+            </div>
+          )}
+
           {/* OAuth Buttons */}
           <div className="space-y-3 mb-6">
             <form action={signInWithGoogle}>
               <button 
                 type="submit"
                 className="w-full py-2.5 px-4 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium rounded-lg transition flex items-center justify-center gap-3 shadow-sm hover:shadow"
+                onClick={(e) => {
+                  // Log what's happening
+                  console.log('Google OAuth button clicked')
+                  console.log('Current URL:', window.location.href)
+                }}
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -26,6 +39,10 @@ export default function LoginPage() {
                 Continue with Google
               </button>
             </form>
+            
+            <div className="text-xs text-slate-500 text-center">
+              <a href="/auth/debug" className="underline">Debug OAuth</a>
+            </div>
 
             <form action={signInWithApple}>
               <button 

@@ -40,6 +40,9 @@ export default async function OpsLayout({
           <NavLink href="/ops/tickets" icon={<Ticket size={20} />}>
             Tickets
           </NavLink>
+          <NavLink href="/ops/runners" icon={<User size={20} />}>
+            Runners
+          </NavLink>
           <NavLink href="/ops/settings" icon={<Settings size={20} />}>
             Settings
           </NavLink>

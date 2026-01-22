@@ -24,29 +24,96 @@ export default function ReportIssuePage() {
     
     const [selectedCategory, setSelectedCategory] = useState('')
     const [description, setDescription] = useState('')
+    const [photo, setPhoto] = useState<File | null>(null)
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [ticketId, setTicketId] = useState<string | null>(null)
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (file) {
+            setPhoto(file)
+            const reader = new FileReader()
+            reader.onloadend = () => {
+                setPhotoPreview(reader.result as string)
+            }
+            reader.readAsDataURL(file)
+        }
+    }
+
+    async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         setIsSubmitting(true)
         
-        const { error } = await supabase
-            .from('tickets')
-            .insert({
-                fridge_code: code,
-                category: selectedCategory,
-                description: description,
-                status: 'open'
-            })
-        
-        if (error) {
+        try {
+            // Get current user for upload tracking
+            const { data: { user } } = await supabase.auth.getUser()
+            
+            // Create ticket first
+            const { data: ticket, error: ticketError } = await supabase
+                .from('tickets')
+                .insert({
+                    fridge_code: code,
+                    category: selectedCategory,
+                    description: description,
+                    status: 'open',
+                    type: 'repair'
+                })
+                .select()
+                .single()
+            
+            if (ticketError) {
+                throw ticketError
+            }
+
+            setTicketId(ticket.id)
+
+            // Upload photo if provided
+            if (photo && ticket.id) {
+                const fileExt = photo.name.split('.').pop()
+                const fileName = `ticket-photos/${ticket.id}-${Date.now()}.${fileExt}`
+                
+                const { error: uploadError } = await supabase.storage
+                    .from('photos')
+                    .upload(fileName, photo, {
+                        contentType: photo.type,
+                        upsert: false,
+                    })
+
+                if (uploadError) {
+                    console.error('Error uploading photo:', uploadError)
+                    // Continue even if photo upload fails
+                } else {
+                    // Get public URL
+                    const { data: urlData } = supabase.storage
+                        .from('photos')
+                        .getPublicUrl(fileName)
+
+                    // Link photo to ticket in ticket_photos table
+                    await supabase
+                        .from('ticket_photos')
+                        .insert({
+                            ticket_id: ticket.id,
+                            storage_path: urlData.publicUrl,
+                            caption: `Issue photo: ${selectedCategory}`,
+                            uploaded_by: user?.id || null
+                        })
+
+                    // Update ticket with image URL
+                    await supabase
+                        .from('tickets')
+                        .update({ image_url: urlData.publicUrl })
+                        .eq('id', ticket.id)
+                }
+            }
+            
+            router.push('/runner') 
+        } catch (error: any) {
             console.error('Error submitting ticket:', error)
             alert('Failed to submit ticket. Please try again.')
+        } finally {
             setIsSubmitting(false)
-            return
         }
-        
-        router.push('/runner') 
     }
 
     return (
@@ -102,15 +169,48 @@ export default function ReportIssuePage() {
                         ></textarea>
                     </div>
 
-                    {/* Photo Upload Mock */}
+                    {/* Photo Upload */}
                     <div className="space-y-3">
                         <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">
                             Add Photo (Optional)
                         </label>
-                        <button type="button" className="w-full border-2 border-dashed border-slate-300 rounded-xl p-8 flex flex-col items-center justify-center text-slate-400 gap-2 hover:border-brand-blue hover:text-brand-blue hover:bg-blue-50/10 transition-all">
-                            <Camera size={24} />
-                            <span className="text-sm font-medium">Tap to take photo</span>
-                        </button>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                            capture="environment"
+                            className="hidden"
+                            id="issue-photo"
+                        />
+                        <label
+                            htmlFor="issue-photo"
+                            className="w-full border-2 border-dashed border-slate-300 rounded-xl p-8 flex flex-col items-center justify-center text-slate-400 gap-2 hover:border-brand-blue hover:text-brand-blue hover:bg-blue-50/10 transition-all cursor-pointer"
+                        >
+                            {photoPreview ? (
+                                <img
+                                    src={photoPreview}
+                                    alt="Issue photo preview"
+                                    className="max-w-full max-h-64 rounded-lg"
+                                />
+                            ) : (
+                                <>
+                                    <Camera size={24} />
+                                    <span className="text-sm font-medium">Tap to take photo</span>
+                                </>
+                            )}
+                        </label>
+                        {photo && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setPhoto(null)
+                                    setPhotoPreview(null)
+                                }}
+                                className="text-xs text-red-600 hover:text-red-700"
+                            >
+                                Remove photo
+                            </button>
+                        )}
                     </div>
 
                     {/* Submit Button */}
