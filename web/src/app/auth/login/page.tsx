@@ -35,7 +35,7 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
                  name="email" 
                  type="email" 
                  required 
-                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-brand-blue outline-none transition"
+                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-brand-blue outline-none transition text-slate-900 placeholder:text-slate-400"
                  placeholder="admin@fridge.business"
                 />
             </div>
@@ -46,7 +46,7 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
                  name="password" 
                  type="password" 
                  required 
-                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-brand-blue outline-none transition"
+                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-brand-blue outline-none transition text-slate-900 placeholder:text-slate-400"
                  placeholder="••••••••"
                 />
             </div>
