@@ -16,7 +16,7 @@ export async function login(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword(data)
 
   if (error) {
-    redirect('/auth/error')
+    redirect(`/auth/login?error=${encodeURIComponent(error.message)}`)
   }
 
   revalidatePath('/', 'layout')
@@ -31,14 +31,35 @@ export async function signup(formData: FormData) {
     password: formData.get('password') as string,
   }
 
-  const { error } = await supabase.auth.signUp(data)
+  const { data: authData, error } = await supabase.auth.signUp(data)
 
   if (error) {
-    redirect('/auth/error')
+    redirect(`/auth/login?error=${encodeURIComponent(error.message)}`)
   }
 
-  revalidatePath('/', 'layout')
-  redirect('/ops')
+  // Check if email confirmation is required
+  if (authData.user && !authData.session) {
+    // Email confirmation is required
+    redirect(`/auth/login?message=${encodeURIComponent('Check your email to confirm your account before signing in')}`)
+  }
+
+  // Create user profile after successful signup (only if auto-confirmed)
+  if (authData.user && authData.session) {
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: authData.user.id,
+        full_name: data.email.split('@')[0],
+        role: 'runner'
+      })
+    
+    if (profileError) {
+      console.error('Profile creation error:', profileError)
+    }
+
+    revalidatePath('/', 'layout')
+    redirect('/ops')
+  }
 }
 
 export async function signInWithGoogle() {

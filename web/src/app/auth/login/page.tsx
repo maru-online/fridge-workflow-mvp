@@ -1,7 +1,8 @@
 import { login, signup, signInWithGoogle, signInWithApple } from './actions'
 
-export default function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
+export default function LoginPage({ searchParams }: { searchParams: { error?: string; message?: string } }) {
   const error = searchParams?.error
+  const message = searchParams?.message
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -15,6 +16,12 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
               {decodeURIComponent(error)}
+            </div>
+          )}
+
+          {message && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+              {decodeURIComponent(message)}
             </div>
           )}
 
