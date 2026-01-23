@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, Users, Ticket, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Ticket, Settings, LogOut, User } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 

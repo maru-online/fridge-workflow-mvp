@@ -12,6 +12,7 @@ interface Ticket {
     type: 'sell' | 'repair' | 'maintenance'
     status: string
     lead_id: number | null
+    image_url: string | null
     leads?: {
         customer_name: string | null
         whatsapp_id: string
@@ -122,7 +123,7 @@ export default function VerifyPaymentPage() {
                         ticket_id: ticket.id,
                         storage_path: proofUrl,
                         caption: `Payment proof: R ${paymentAmount}`,
-                        uploaded_by: user?.user?.id || null
+                        uploaded_by: user?.id || null
                     })
             }
 
