@@ -11,6 +11,19 @@ const corsHeaders = {
 const WHATSAPP_API_VERSION = 'v21.0'
 const WHATSAPP_API_BASE = `https://graph.facebook.com/${WHATSAPP_API_VERSION}`
 
+// Input validation functions
+function validateWhatsAppId(id: string): boolean {
+  return /^\d{10,15}$/.test(id) // WhatsApp IDs are 10-15 digits
+}
+
+function sanitizeText(text: string): string {
+  return text.replace(/[<>"'&]/g, '').slice(0, 4096) // Remove HTML chars and limit length
+}
+
+function validateMessageText(text: string): boolean {
+  return text.length > 0 && text.length <= 4096
+}
+
 /**
  * Send a WhatsApp message using Meta Cloud API
  */
@@ -20,6 +33,17 @@ async function sendWhatsAppReply(to: string, text: string): Promise<boolean> {
 
   if (!accessToken || !phoneNumberId) {
     console.error('Missing WhatsApp credentials: WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID');
+    return false;
+  }
+
+  // Validate inputs
+  if (!validateWhatsAppId(to)) {
+    console.error('Invalid WhatsApp ID format:', to);
+    return false;
+  }
+
+  if (!validateMessageText(text)) {
+    console.error('Invalid message text length:', text.length);
     return false;
   }
 
@@ -36,7 +60,7 @@ async function sendWhatsAppReply(to: string, text: string): Promise<boolean> {
         to: to,
         type: 'text',
         text: {
-          body: text
+          body: sanitizeText(text)
         }
       })
     });

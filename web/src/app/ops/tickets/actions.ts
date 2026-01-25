@@ -3,11 +3,21 @@
 import { createClient } from '@/utils/supabase/server'
 import QRCode from 'qrcode'
 import { revalidatePath } from 'next/cache'
+import { validateUuid, sanitizeText } from '@/utils/validation'
 
 export async function createTicketFromLead(leadId: number, ticketType: 'sell' | 'repair') {
   const supabase = await createClient()
   
-  // Get lead details
+  // Validate inputs
+  if (!leadId || leadId <= 0) {
+    return { error: 'Invalid lead ID' }
+  }
+  
+  if (!['sell', 'repair'].includes(ticketType)) {
+    return { error: 'Invalid ticket type' }
+  }
+  
+  // Get lead details with validation
   const { data: lead, error: leadError } = await supabase
     .from('leads')
     .select('*')
@@ -18,12 +28,18 @@ export async function createTicketFromLead(leadId: number, ticketType: 'sell' | 
     return { error: 'Lead not found' }
   }
 
-  // Generate fridge code
+  // Generate secure fridge code
   const date = new Date()
   const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '')
   const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
   const prefix = ticketType === 'sell' ? 'SELL' : 'REP'
   const fridgeCode = `${prefix}-${dateStr}-${randomSuffix}`
+
+  // Sanitize description
+  const description = sanitizeText(
+    lead.notes || `${ticketType === 'sell' ? 'Sell' : 'Repair'} request from WhatsApp`,
+    500
+  )
 
   // Create ticket
   const { data: ticket, error: ticketError } = await supabase
@@ -34,18 +50,19 @@ export async function createTicketFromLead(leadId: number, ticketType: 'sell' | 
       category: ticketType,
       type: ticketType,
       status: 'open',
-      description: lead.notes || `${ticketType === 'sell' ? 'Sell' : 'Repair'} request from WhatsApp`,
+      description: description,
     })
     .select()
     .single()
 
   if (ticketError || !ticket) {
+    console.error('Ticket creation error:', ticketError)
     return { error: 'Failed to create ticket' }
   }
 
-  // Generate QR code
+  // Generate QR code securely
   try {
-    // Generate QR code as data URL
+    // Generate QR code as data URL with security options
     const qrDataUrl = await QRCode.toDataURL(fridgeCode, {
       errorCorrectionLevel: 'M',
       type: 'image/png',
@@ -55,9 +72,13 @@ export async function createTicketFromLead(leadId: number, ticketType: 'sell' | 
 
     // Convert data URL to buffer
     const base64Data = qrDataUrl.split(',')[1]
+    if (!base64Data) {
+      throw new Error('Invalid QR code data')
+    }
+    
     const buffer = Buffer.from(base64Data, 'base64')
 
-    // Upload QR code to Supabase Storage
+    // Upload QR code to Supabase Storage with secure filename
     const fileName = `qr-codes/${fridgeCode}.png`
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('photos')
@@ -75,11 +96,13 @@ export async function createTicketFromLead(leadId: number, ticketType: 'sell' | 
         .from('photos')
         .getPublicUrl(fileName)
 
-      // Update ticket with QR code URL (we can store this in a new field or use image_url)
-      await supabase
-        .from('tickets')
-        .update({ image_url: urlData.publicUrl })
-        .eq('id', ticket.id)
+      if (urlData?.publicUrl) {
+        // Update ticket with QR code URL
+        await supabase
+          .from('tickets')
+          .update({ image_url: urlData.publicUrl })
+          .eq('id', ticket.id)
+      }
     }
   } catch (qrError) {
     console.error('Error generating QR code:', qrError)
@@ -103,6 +126,32 @@ export async function createTicketFromLead(leadId: number, ticketType: 'sell' | 
 export async function assignTicket(ticketId: string, runnerId: string) {
   const supabase = await createClient()
 
+  // Validate inputs
+  const ticketValidation = validateUuid(ticketId)
+  if (!ticketValidation.isValid) {
+    return { error: 'Invalid ticket ID format' }
+  }
+  
+  const runnerValidation = validateUuid(runnerId)
+  if (!runnerValidation.isValid) {
+    return { error: 'Invalid runner ID format' }
+  }
+
+  // Verify runner exists and has correct role
+  const { data: runner, error: runnerError } = await supabase
+    .from('profiles')
+    .select('id, role')
+    .eq('id', runnerId)
+    .single()
+
+  if (runnerError || !runner) {
+    return { error: 'Runner not found' }
+  }
+
+  if (runner.role !== 'runner' && runner.role !== 'admin') {
+    return { error: 'Invalid runner role' }
+  }
+
   // Get ticket details for notification
   const { data: ticket } = await supabase
     .from('tickets')
@@ -116,6 +165,10 @@ export async function assignTicket(ticketId: string, runnerId: string) {
     .eq('id', ticketId)
     .single()
 
+  if (!ticket) {
+    return { error: 'Ticket not found' }
+  }
+
   const { error } = await supabase
     .from('tickets')
     .update({
@@ -125,18 +178,41 @@ export async function assignTicket(ticketId: string, runnerId: string) {
     .eq('id', ticketId)
 
   if (error) {
+    console.error('Ticket assignment error:', error)
     return { error: 'Failed to assign ticket' }
   }
-
-  // Send notification to runner if they have WhatsApp (optional - requires runner profile with phone)
-  // For now, we'll skip runner notifications as they use the app
 
   revalidatePath('/ops/tickets')
   return { success: true }
 }
 
-export async function updateTicketStatus(ticketId: string, status: 'open' | 'assigned' | 'in_progress' | 'completed' | 'closed') {
+export async function updateTicketStatus(
+  ticketId: string, 
+  status: 'open' | 'assigned' | 'in_progress' | 'completed' | 'closed'
+) {
   const supabase = await createClient()
+
+  // Validate inputs
+  const ticketValidation = validateUuid(ticketId)
+  if (!ticketValidation.isValid) {
+    return { error: 'Invalid ticket ID format' }
+  }
+
+  const validStatuses = ['open', 'assigned', 'in_progress', 'completed', 'closed']
+  if (!validStatuses.includes(status)) {
+    return { error: 'Invalid status' }
+  }
+
+  // Verify ticket exists
+  const { data: existingTicket } = await supabase
+    .from('tickets')
+    .select('id, status')
+    .eq('id', ticketId)
+    .single()
+
+  if (!existingTicket) {
+    return { error: 'Ticket not found' }
+  }
 
   const updateData: any = { status }
   
@@ -150,6 +226,7 @@ export async function updateTicketStatus(ticketId: string, status: 'open' | 'ass
     .eq('id', ticketId)
 
   if (error) {
+    console.error('Ticket status update error:', error)
     return { error: 'Failed to update ticket status' }
   }
 

@@ -4,19 +4,128 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { createClient } from '@/utils/supabase/server'
+import { validatePhoneNumber, validateOtpCode } from '@/utils/validation'
+
+// Input validation functions
+function validateEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email) && email.length <= 254
+}
+
+function validatePassword(password: string): boolean {
+  return password.length >= 8 && password.length <= 128
+}
+
+function sanitizeInput(input: string): string {
+  return input.trim().slice(0, 1000) // Limit input length
+}
+
+export async function signUpWithPhone(formData: FormData) {
+  const supabase = await createClient()
+
+  const phone = sanitizeInput(formData.get('phone') as string || '')
+
+  // Validate phone number
+  const phoneValidation = validatePhoneNumber(phone)
+  if (!phoneValidation.isValid) {
+    redirect(`/auth/login?error=${encodeURIComponent(phoneValidation.error || 'Invalid phone number')}`)
+  }
+
+  const { error } = await supabase.auth.signInWithOtp({
+    phone: phoneValidation.sanitized!,
+    options: {
+      channel: 'sms',
+    },
+  })
+
+  if (error) {
+    console.error('Phone signup error:', error)
+    redirect(`/auth/login?error=${encodeURIComponent('Failed to send verification code')}`)
+  }
+
+  // Redirect to verification page
+  redirect(`/auth/verify?phone=${encodeURIComponent(phoneValidation.sanitized!)}`)
+}
+
+export async function verifyPhoneOtp(formData: FormData) {
+  const supabase = await createClient()
+
+  const phone = sanitizeInput(formData.get('phone') as string || '')
+  const otp = sanitizeInput(formData.get('otp') as string || '')
+
+  // Validate inputs
+  const phoneValidation = validatePhoneNumber(phone)
+  if (!phoneValidation.isValid) {
+    redirect(`/auth/verify?phone=${encodeURIComponent(phone)}&error=${encodeURIComponent('Invalid phone number')}`)
+  }
+
+  const otpValidation = validateOtpCode(otp)
+  if (!otpValidation.isValid) {
+    redirect(`/auth/verify?phone=${encodeURIComponent(phone)}&error=${encodeURIComponent(otpValidation.error || 'Invalid code')}`)
+  }
+
+  const { data, error } = await supabase.auth.verifyOtp({
+    phone: phoneValidation.sanitized!,
+    token: otpValidation.sanitized!,
+    type: 'sms',
+  })
+
+  if (error) {
+    console.error('OTP verification error:', error)
+    redirect(`/auth/verify?phone=${encodeURIComponent(phone)}&error=${encodeURIComponent('Invalid or expired code')}`)
+  }
+
+  // Create user profile if it doesn't exist
+  if (data.user) {
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', data.user.id)
+      .single()
+
+    if (!existingProfile) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: data.user.id,
+          full_name: phone.replace(/\D/g, '').slice(-4), // Last 4 digits as temp name
+          role: 'runner',
+          phone_number: phoneValidation.sanitized
+        })
+      
+      if (profileError) {
+        console.error('Profile creation error:', profileError)
+      }
+    }
+  }
+
+  revalidatePath('/', 'layout')
+  redirect('/ops')
+}
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
 
-  const data = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
+  const email = sanitizeInput(formData.get('email') as string || '')
+  const password = sanitizeInput(formData.get('password') as string || '')
+
+  // Validate inputs
+  if (!validateEmail(email)) {
+    redirect(`/auth/login?error=${encodeURIComponent('Invalid email format')}`)
   }
 
-  const { error } = await supabase.auth.signInWithPassword(data)
+  if (!validatePassword(password)) {
+    redirect(`/auth/login?error=${encodeURIComponent('Password must be 8-128 characters')}`)
+  }
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  })
 
   if (error) {
-    redirect(`/auth/login?error=${encodeURIComponent(error.message)}`)
+    // Don't expose detailed error messages
+    redirect(`/auth/login?error=${encodeURIComponent('Invalid credentials')}`)
   }
 
   revalidatePath('/', 'layout')
@@ -26,20 +135,30 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
   const supabase = await createClient()
 
-  const data = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
+  const email = sanitizeInput(formData.get('email') as string || '')
+  const password = sanitizeInput(formData.get('password') as string || '')
+
+  // Validate inputs
+  if (!validateEmail(email)) {
+    redirect(`/auth/login?error=${encodeURIComponent('Invalid email format')}`)
   }
 
-  const { data: authData, error } = await supabase.auth.signUp(data)
+  if (!validatePassword(password)) {
+    redirect(`/auth/login?error=${encodeURIComponent('Password must be 8-128 characters')}`)
+  }
+
+  const { data: authData, error } = await supabase.auth.signUp({
+    email,
+    password,
+  })
 
   if (error) {
-    redirect(`/auth/login?error=${encodeURIComponent(error.message)}`)
+    // Don't expose detailed error messages
+    redirect(`/auth/login?error=${encodeURIComponent('Signup failed. Please try again.')}`)
   }
 
   // Check if email confirmation is required
   if (authData.user && !authData.session) {
-    // Email confirmation is required
     redirect(`/auth/login?message=${encodeURIComponent('Check your email to confirm your account before signing in')}`)
   }
 
@@ -49,7 +168,7 @@ export async function signup(formData: FormData) {
       .from('profiles')
       .insert({
         id: authData.user.id,
-        full_name: data.email.split('@')[0],
+        full_name: email.split('@')[0].slice(0, 50), // Limit name length
         role: 'runner'
       })
     
@@ -66,10 +185,15 @@ export async function signInWithGoogle() {
   const supabase = await createClient()
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  
+  // Validate site URL
+  if (!siteUrl.startsWith('http://') && !siteUrl.startsWith('https://')) {
+    redirect(`/auth/login?error=${encodeURIComponent('Invalid site configuration')}`)
+  }
+  
   const redirectTo = `${siteUrl}/auth/callback`
 
   console.log('Starting Google OAuth with redirectTo:', redirectTo)
-  console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -85,38 +209,51 @@ export async function signInWithGoogle() {
 
   if (error) {
     console.error('Google OAuth error:', error)
-    redirect(`/auth/login?error=${encodeURIComponent(error.message)}`)
+    redirect(`/auth/login?error=${encodeURIComponent('OAuth authentication failed')}`)
   }
 
   if (data?.url) {
-    console.log('OAuth URL generated:', data.url.substring(0, 100) + '...')
-    // Check if URL contains 'github' - this shouldn't happen
-    if (data.url.toLowerCase().includes('github')) {
-      console.error('ERROR: OAuth URL contains GitHub! This is wrong.')
-      redirect(`/auth/login?error=${encodeURIComponent('OAuth misconfiguration detected. Please check Supabase settings.')}`)
+    // Security check: ensure URL is from Google
+    if (!data.url.includes('accounts.google.com')) {
+      console.error('ERROR: OAuth URL is not from Google!')
+      redirect(`/auth/login?error=${encodeURIComponent('OAuth misconfiguration detected')}`)
     }
     redirect(data.url)
   } else {
-    redirect('/auth/login?error=No OAuth URL returned')
+    redirect('/auth/login?error=OAuth URL generation failed')
   }
 }
 
 export async function signInWithApple() {
   const supabase = await createClient()
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  
+  // Validate site URL
+  if (!siteUrl.startsWith('http://') && !siteUrl.startsWith('https://')) {
+    redirect(`/auth/login?error=${encodeURIComponent('Invalid site configuration')}`)
+  }
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'apple',
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+      redirectTo: `${siteUrl}/auth/callback`,
     },
   })
 
   if (error) {
     console.error('Apple OAuth error:', error)
-    redirect(`/auth/login?error=${encodeURIComponent(error.message)}`)
+    redirect(`/auth/login?error=${encodeURIComponent('OAuth authentication failed')}`)
   }
 
-  if (data.url) {
+  if (data?.url) {
+    // Security check: ensure URL is from Apple
+    if (!data.url.includes('appleid.apple.com')) {
+      console.error('ERROR: OAuth URL is not from Apple!')
+      redirect(`/auth/login?error=${encodeURIComponent('OAuth misconfiguration detected')}`)
+    }
     redirect(data.url)
+  } else {
+    redirect('/auth/login?error=OAuth URL generation failed')
   }
 }
