@@ -18,6 +18,8 @@ export default async function Home() {
 
   if (profile?.role === 'runner') {
     redirect('/runner')
+  } else if (profile?.role === 'customer') {
+    redirect('/client')
   } else {
     // Default to ops for admins or others
     redirect('/ops')

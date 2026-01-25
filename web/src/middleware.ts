@@ -57,7 +57,9 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Protect auth routes
-  if (request.nextUrl.pathname.startsWith('/ops') || request.nextUrl.pathname.startsWith('/runner')) {
+  if (request.nextUrl.pathname.startsWith('/ops') || 
+      request.nextUrl.pathname.startsWith('/runner') ||
+      request.nextUrl.pathname.startsWith('/client')) {
     if (!user) {
       const url = request.nextUrl.clone()
       url.pathname = '/auth/login'
