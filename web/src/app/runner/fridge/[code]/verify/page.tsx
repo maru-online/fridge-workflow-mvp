@@ -127,11 +127,11 @@ export default function VerifyPaymentPage() {
                     })
             }
 
-            // Update ticket status to completed
+            // Update ticket status to closed (final state)
             const { error: updateError } = await supabase
                 .from('tickets')
                 .update({
-                    status: 'completed',
+                    status: 'closed',
                     completed_at: new Date().toISOString(),
                     image_url: proofUrl || ticket.image_url,
                 })
