@@ -100,7 +100,7 @@ export async function verifyPhoneOtp(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/ops')
+  redirect('/')
 }
 
 export async function login(formData: FormData) {
@@ -129,7 +129,7 @@ export async function login(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/ops')
+  redirect('/')
 }
 
 export async function signup(formData: FormData) {
@@ -177,7 +177,7 @@ export async function signup(formData: FormData) {
     }
 
     revalidatePath('/', 'layout')
-    redirect('/ops')
+    redirect('/')
   }
 }
 

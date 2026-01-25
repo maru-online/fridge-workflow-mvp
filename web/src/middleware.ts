@@ -68,7 +68,7 @@ export async function middleware(request: NextRequest) {
   // Redirect authenticated users away from login
   if (request.nextUrl.pathname === '/auth/login' && user) {
     const url = request.nextUrl.clone()
-    url.pathname = '/ops'
+    url.pathname = '/' // Go to root, which will handle role-based routing
     return NextResponse.redirect(url)
   }
 
