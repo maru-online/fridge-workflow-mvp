@@ -213,11 +213,6 @@ export async function signInWithGoogle() {
   }
 
   if (data?.url) {
-    // Security check: ensure URL is from Google
-    if (!data.url.includes('accounts.google.com')) {
-      console.error('ERROR: OAuth URL is not from Google!')
-      redirect(`/auth/login?error=${encodeURIComponent('OAuth misconfiguration detected')}`)
-    }
     redirect(data.url)
   } else {
     redirect('/auth/login?error=OAuth URL generation failed')
@@ -247,11 +242,6 @@ export async function signInWithApple() {
   }
 
   if (data?.url) {
-    // Security check: ensure URL is from Apple
-    if (!data.url.includes('appleid.apple.com')) {
-      console.error('ERROR: OAuth URL is not from Apple!')
-      redirect(`/auth/login?error=${encodeURIComponent('OAuth misconfiguration detected')}`)
-    }
     redirect(data.url)
   } else {
     redirect('/auth/login?error=OAuth URL generation failed')
