@@ -21,7 +21,7 @@
   Start: 2025-10-07 • Due: 2025-10-08 • Estimate: 10h
 - [x] **A10** Notifications (reminders/nearby)  
   Start: 2025-10-07 • Due: 2025-10-08 • Estimate: 7h
-- [ ] **T1** Flow happy paths (EN + 1 local)  
+- [x] **T1** Flow happy paths (EN + 1 local)  
   Start: 2025-10-08 • Due: 2025-10-08 • Estimate: 5h
 - [ ] **T2** Edge cases (no photos/low signal)  
   Start: 2025-10-09 • Due: 2025-10-09 • Estimate: 4h
