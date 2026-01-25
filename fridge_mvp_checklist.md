@@ -25,7 +25,7 @@
   Start: 2025-10-08 • Due: 2025-10-08 • Estimate: 5h
 - [ ] **T2** Edge cases (no photos/low signal)  
   Start: 2025-10-09 • Due: 2025-10-09 • Estimate: 4h
-- [ ] **T3** Ops & Runner E2E  
+- [x] **T3** Ops & Runner E2E  
   Start: 2025-10-11 • Due: 2025-10-11 • Estimate: 5h
 - [x] **T4** POPIA checks (consent/masking)  
   Start: 2025-10-09 • Due: 2025-10-09 • Estimate: 1.5h
