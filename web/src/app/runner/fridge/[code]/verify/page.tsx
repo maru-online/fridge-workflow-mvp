@@ -88,8 +88,14 @@ export default function VerifyPaymentPage() {
         }
 
         setIsSubmitting(true)
+        setError(null)
 
         try {
+            // Capture GPS coordinates
+            const { getCurrentPosition } = await import('@/utils/geolocation')
+            const position = await getCurrentPosition()
+            const gpsString = position ? `${position.latitude},${position.longitude}` : null
+
             // Get current user for upload tracking
             const { data: { user } } = await supabase.auth.getUser()
 
@@ -127,13 +133,14 @@ export default function VerifyPaymentPage() {
                     })
             }
 
-            // Update ticket status to closed (final state)
+            // Update ticket status to closed (final state) and save GPS
             const { error: updateError } = await supabase
                 .from('tickets')
                 .update({
                     status: 'closed',
                     completed_at: new Date().toISOString(),
                     image_url: proofUrl || ticket.image_url,
+                    location_gps: gpsString,
                 })
                 .eq('id', ticket.id)
 

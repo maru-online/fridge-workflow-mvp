@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { MapPin, Calendar, ArrowRight, QrCode } from "lucide-react";
+import { Calendar, QrCode, MapPin } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { formatDistanceToNow } from 'date-fns';
+import LocationLogger from "./LocationLogger";
 
 export default async function RunnerHomePage() {
   const supabase = await createClient();
@@ -27,45 +28,55 @@ export default async function RunnerHomePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-slate-900">Today's Route</h2>
-        <p className="text-slate-500 text-sm">
-          {assignedTickets.length} {assignedTickets.length === 1 ? 'job' : 'jobs'} remaining
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Today's Route</h2>
+          <p className="text-slate-500 text-sm">
+            {assignedTickets.length} {assignedTickets.length === 1 ? 'job' : 'jobs'} remaining
+          </p>
+        </div>
+        <LocationLogger />
       </div>
 
       <div className="space-y-4">
         {assignedTickets.length > 0 ? (
           assignedTickets.map((ticket: any) => (
-            <Link
+            <div
               key={ticket.id}
-              href={`/runner/fridge/${ticket.fridge_code}`}
-              className="block bg-white p-4 rounded-xl border border-slate-200 shadow-sm active:scale-[0.98] transition-transform hover:border-brand-blue hover:shadow-md"
+              className="block bg-white rounded-xl border border-slate-200 shadow-sm active:scale-[0.98] transition-transform hover:border-brand-blue hover:shadow-md overflow-hidden"
             >
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex items-center gap-2">
-                  <QrCode size={14} className="text-slate-400" />
-                  <span className="font-mono text-xs text-slate-600">{ticket.fridge_code}</span>
+              <Link href={`/runner/fridge/${ticket.fridge_code}`} className="p-4 block">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2">
+                    <QrCode size={14} className="text-slate-400" />
+                    <span className="font-mono text-xs text-slate-600">{ticket.fridge_code}</span>
+                  </div>
+                  <span
+                    className={`text-xs font-bold px-2 py-1 rounded-full uppercase tracking-wider ${
+                      ticket.type === "sell"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-orange-100 text-orange-700"
+                    }`}
+                  >
+                    {ticket.type}
+                  </span>
                 </div>
-                <span
-                  className={`text-xs font-bold px-2 py-1 rounded-full uppercase tracking-wider ${
-                    ticket.type === "sell"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-orange-100 text-orange-700"
-                  }`}
-                >
-                  {ticket.type}
-                </span>
-              </div>
-              <h3 className="font-semibold text-slate-900 mb-1">
-                {ticket.leads?.customer_name || 'Unknown Customer'}
-              </h3>
+                <h3 className="font-semibold text-slate-900 mb-1">
+                  {ticket.leads?.customer_name || 'Unknown Customer'}
+                </h3>
+              </Link>
+              
               {ticket.leads?.villages && (
-                <div className="flex items-center text-slate-500 text-sm gap-4">
-                  <div className="flex items-center gap-1">
+                <div className="px-4 pb-4 flex items-center text-slate-500 text-sm gap-4">
+                  <a 
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.leads.villages.name)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 hover:text-brand-blue transition-colors z-10"
+                  >
                     <MapPin size={14} />
                     {ticket.leads.villages.name}
-                  </div>
+                  </a>
                   {ticket.scheduled_for && (
                     <div className="flex items-center gap-1">
                       <Calendar size={14} />
@@ -74,10 +85,10 @@ export default async function RunnerHomePage() {
                   )}
                 </div>
               )}
-              <div className="mt-2 text-xs text-slate-400">
+              <div className="px-4 pb-4 pt-0 text-xs text-slate-400">
                 {formatDistanceToNow(new Date(ticket.created_at), { addSuffix: true })}
               </div>
-            </Link>
+            </div>
           ))
         ) : (
           <div className="bg-white p-8 rounded-xl border border-slate-200 text-center">

@@ -46,6 +46,11 @@ export default function ReportIssuePage() {
         setIsSubmitting(true)
         
         try {
+            // Capture GPS coordinates
+            const { getCurrentPosition } = await import('@/utils/geolocation')
+            const position = await getCurrentPosition()
+            const gpsString = position ? `${position.latitude},${position.longitude}` : null
+
             // Get current user for upload tracking
             const { data: { user } } = await supabase.auth.getUser()
             
@@ -57,7 +62,8 @@ export default function ReportIssuePage() {
                     category: selectedCategory,
                     description: description,
                     status: 'open',
-                    type: 'repair'
+                    type: 'repair',
+                    location_gps: gpsString
                 })
                 .select()
                 .single()
