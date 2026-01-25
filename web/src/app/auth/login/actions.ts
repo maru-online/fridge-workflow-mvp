@@ -112,7 +112,8 @@ export async function signInWithApple() {
   })
 
   if (error) {
-    redirect('/auth/error')
+    console.error('Apple OAuth error:', error)
+    redirect(`/auth/login?error=${encodeURIComponent(error.message)}`)
   }
 
   if (data.url) {

@@ -34,6 +34,10 @@
    - Start a new chat with: `+1 555 149 5365`
    - Send: "Hello Fridge" or any test message
 
+   - Save `+1 555 149 5365` as a contact on your phone (Name it "Fridge Test")
+   - **OR** Click this link on your phone: [https://wa.me/15551495365](https://wa.me/15551495365)
+   - Send: "Hello Fridge" or any test message
+
 2. **Check Supabase Logs:**
    - Go to: https://supabase.com/dashboard/project/ymeixyzoontlhnwyztba
    - Navigate to: **Edge Functions → whatsapp → Logs**

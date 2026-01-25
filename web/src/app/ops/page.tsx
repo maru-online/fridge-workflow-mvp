@@ -20,6 +20,20 @@ export default async function DashboardPage() {
     .order('created_at', { ascending: false })
     .limit(5);
 
+  // Fetch recent leads
+  const { data: recentLeads } = await supabase
+    .from("leads")
+    .select("*")
+    .order('created_at', { ascending: false })
+    .limit(5);
+
+  // Combine and sort activities
+  const activities = [
+    ...(recentTickets?.map(t => ({ ...t, type: 'ticket' as const, date: new Date(t.created_at) })) || []),
+    ...(recentLeads?.map(l => ({ ...l, type: 'lead' as const, date: new Date(l.created_at) })) || [])
+  ].sort((a, b) => b.date.getTime() - a.date.getTime())
+   .slice(0, 5);
+
   return (
     <div className="space-y-8">
       <div>
@@ -44,17 +58,20 @@ export default async function DashboardPage() {
         <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
           <h2 className="font-semibold text-slate-800 mb-4">Recent Activity</h2>
           <div className="space-y-4">
-            {recentTickets?.map((ticket) => (
+            {activities.map((item) => (
                 <ActivityItem 
-                   key={ticket.id}
-                   text={`New Ticket: ${ticket.category} (${ticket.fridge_code})`} 
-                   time={`${formatDistanceToNow(new Date(ticket.created_at))} ago`} 
-                   type="ticket"
-                   details={ticket.description}
+                   key={`${item.type}-${item.id}`}
+                   text={item.type === 'ticket' 
+                     ? `New Ticket: ${item.category} (${item.fridge_code})`
+                     : `New Lead: ${item.customer_name || 'Unknown'}`
+                   }
+                   time={`${formatDistanceToNow(new Date(item.created_at))} ago`} 
+                   type={item.type}
+                   details={item.type === 'ticket' ? item.description : item.notes}
                 />
             ))}
             
-            {(!recentTickets || recentTickets.length === 0) && (
+            {activities.length === 0 && (
                 <p className="text-sm text-slate-400 italic">No recent activity.</p>
             )}
           </div>

@@ -18,6 +18,8 @@ interface Lead {
   status: LeadStatus
   notes: string | null
   created_at: string
+  consent_given?: boolean
+  consent_date?: string
   villages?: { name: string } | null
 }
 
@@ -186,23 +188,33 @@ function LeadCard({
 }) {
   const [showTicketMenu, setShowTicketMenu] = useState(false)
 
+  // Format creation time
+  const timeAgo = formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })
+  
+  // Format consent
+  const hasConsent = lead.consent_given === true
+
   return (
     <div
       draggable
       onDragStart={onDragStart}
       className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow cursor-move"
     >
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex-1">
-          <h3 className="font-semibold text-slate-900 text-sm mb-1">
-            {lead.customer_name || 'Unknown Customer'}
-          </h3>
-          <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
-            <MessageSquare size={12} />
-            <span className="font-mono">{maskPhoneNumber(lead.whatsapp_id)}</span>
-          </div>
-        </div>
+      <div className="flex items-center justify-between mb-2">
+        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${hasConsent ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+           {hasConsent ? 'CONSENTED' : 'NO CONSENT'}
+        </span>
         <GripVertical size={16} className="text-slate-400" />
+      </div>
+
+      <div className="mb-2">
+        <h3 className="font-semibold text-slate-900 text-sm mb-1 line-clamp-1">
+          {lead.customer_name || 'Unknown Customer'}
+        </h3>
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <MessageSquare size={12} className="text-green-600" />
+          <span className="font-mono">{maskPhoneNumber(lead.whatsapp_id)}</span>
+        </div>
       </div>
 
       {lead.villages && (
@@ -213,14 +225,14 @@ function LeadCard({
       )}
 
       {lead.notes && (
-        <p className="text-xs text-slate-500 line-clamp-2 mb-2">
-          {lead.notes}
+        <p className="text-xs text-slate-500 line-clamp-2 mb-2 bg-slate-50 p-1.5 rounded border border-slate-100 italic">
+          "{lead.notes}"
         </p>
       )}
 
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
         <div className="text-[10px] text-slate-400">
-          {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}
+          {timeAgo}
         </div>
         <div className="relative">
           <button
