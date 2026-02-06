@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { User, MapPin, Ticket, CheckCircle, Clock } from 'lucide-react'
+import { User, CheckCircle, Clock } from 'lucide-react'
 
 interface Runner {
   id: string
@@ -19,11 +19,7 @@ export default function RunnersPage() {
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
-  useEffect(() => {
-    loadRunners()
-  }, [])
-
-  async function loadRunners() {
+  const loadRunners = useCallback(async () => {
     try {
       // Get all runners
       const { data: runnersData, error: runnersError } = await supabase
@@ -63,7 +59,11 @@ export default function RunnersPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [supabase])
+
+  useEffect(() => {
+    loadRunners()
+  }, [loadRunners])
 
   if (loading) {
     return (

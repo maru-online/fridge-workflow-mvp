@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { ArrowLeft, MapPin, CheckCircle, AlertTriangle, ClipboardList, User, Calendar, Loader2 } from 'lucide-react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { ArrowLeft, MapPin, CheckCircle, AlertTriangle, Calendar, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
@@ -30,11 +30,7 @@ export default function FridgeActionPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    useEffect(() => {
-        loadTicket()
-    }, [code])
-
-    async function loadTicket() {
+    const loadTicket = useCallback(async () => {
         try {
             const { data, error } = await supabase
                 .from('tickets')
@@ -60,13 +56,17 @@ export default function FridgeActionPage() {
             } else {
                 setTicket(data)
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error loading ticket:', err)
             setError('Failed to load ticket information.')
         } finally {
             setLoading(false)
         }
-    }
+    }, [code, supabase])
+
+    useEffect(() => {
+        loadTicket()
+    }, [loadTicket])
 
     if (loading) {
         return (

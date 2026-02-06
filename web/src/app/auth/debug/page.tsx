@@ -4,7 +4,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useState } from 'react'
 
 export default function DebugPage() {
-  const [info, setInfo] = useState<any>(null)
+  const [info, setInfo] = useState<Record<string, unknown> | null>(null)
   const supabase = createClient()
 
   async function checkAuth() {

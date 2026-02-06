@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { formatDistanceToNow } from 'date-fns'
-import { User, MapPin, MessageSquare, GripVertical, Ticket, Plus } from 'lucide-react'
+import { MapPin, MessageSquare, GripVertical, Ticket, Plus } from 'lucide-react'
 import { createTicketFromLead } from '../tickets/actions'
 import { maskPhoneNumber } from '@/utils/data-masking'
 
@@ -36,6 +36,25 @@ export default function LeadsPage() {
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null)
   const supabase = createClient()
 
+  const loadLeads = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('leads')
+        .select(`
+          *,
+          villages:village_id (name)
+        `)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setLeads(data || [])
+    } catch (error) {
+      console.error('Error loading leads:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [supabase])
+
   useEffect(() => {
     loadLeads()
     
@@ -53,26 +72,7 @@ export default function LeadsPage() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [])
-
-  async function loadLeads() {
-    try {
-      const { data, error } = await supabase
-        .from('leads')
-        .select(`
-          *,
-          villages:village_id (name)
-        `)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setLeads(data || [])
-    } catch (error) {
-      console.error('Error loading leads:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [loadLeads, supabase])
 
   async function updateLeadStatus(leadId: number, newStatus: LeadStatus) {
     try {
@@ -98,7 +98,7 @@ export default function LeadsPage() {
     setDraggedLead(lead)
   }
 
-  function handleDragOver(e: React.DragEvent, status: LeadStatus) {
+  function handleDragOver(e: React.DragEvent) {
     e.preventDefault()
   }
 
@@ -136,7 +136,7 @@ export default function LeadsPage() {
           <div
             key={column.id}
             className={`rounded-lg border-2 ${column.color} p-4 min-h-[500px]`}
-            onDragOver={(e) => handleDragOver(e, column.id)}
+            onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, column.id)}
           >
             <div className="flex items-center justify-between mb-4">
@@ -226,7 +226,7 @@ function LeadCard({
 
       {lead.notes && (
         <p className="text-xs text-slate-500 line-clamp-2 mb-2 bg-slate-50 p-1.5 rounded border border-slate-100 italic">
-          "{lead.notes}"
+          &quot;{lead.notes}&quot;
         </p>
       )}
 

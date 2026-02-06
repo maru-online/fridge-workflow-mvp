@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, Users, Ticket, Settings, LogOut, User } from "lucide-react";
+import { LayoutDashboard, Users, Ticket, Settings, LogOut } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -40,9 +40,9 @@ export default async function OpsLayout({
           <NavLink href="/ops/tickets" icon={<Ticket size={20} />}>
             Tickets
           </NavLink>
-          <NavLink href="/ops/runners" icon={<User size={20} />}>
+          {/* <NavLink href="/ops/runners" icon={<User size={20} />}>
             Runners
-          </NavLink>
+          </NavLink> */}
           <NavLink href="/ops/settings" icon={<Settings size={20} />}>
             Settings
           </NavLink>

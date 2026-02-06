@@ -44,7 +44,7 @@ export default function ManualEntryPage() {
 
             // Redirect to fridge details/action page
             router.push(`/runner/fridge/${normalizedCode}`)
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error verifying code:', err)
             setError('Failed to verify code. Please check your connection and try again.')
             setIsVerifying(false)

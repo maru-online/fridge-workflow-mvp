@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { createClient } from '@/utils/supabase/server'
-import { validatePhoneNumber, validateOtpCode } from '@/utils/validation'
 
 // Input validation functions
 function validateEmail(email: string): boolean {
@@ -18,89 +17,6 @@ function validatePassword(password: string): boolean {
 
 function sanitizeInput(input: string): string {
   return input.trim().slice(0, 1000) // Limit input length
-}
-
-export async function signUpWithPhone(formData: FormData) {
-  const supabase = await createClient()
-
-  const phone = sanitizeInput(formData.get('phone') as string || '')
-
-  // Validate phone number
-  const phoneValidation = validatePhoneNumber(phone)
-  if (!phoneValidation.isValid) {
-    redirect(`/auth/login?error=${encodeURIComponent(phoneValidation.error || 'Invalid phone number')}`)
-  }
-
-  const { error } = await supabase.auth.signInWithOtp({
-    phone: phoneValidation.sanitized!,
-    options: {
-      channel: 'sms',
-    },
-  })
-
-  if (error) {
-    console.error('Phone signup error:', error)
-    redirect(`/auth/login?error=${encodeURIComponent('Failed to send verification code')}`)
-  }
-
-  // Redirect to verification page
-  redirect(`/auth/verify?phone=${encodeURIComponent(phoneValidation.sanitized!)}`)
-}
-
-export async function verifyPhoneOtp(formData: FormData) {
-  const supabase = await createClient()
-
-  const phone = sanitizeInput(formData.get('phone') as string || '')
-  const otp = sanitizeInput(formData.get('otp') as string || '')
-
-  // Validate inputs
-  const phoneValidation = validatePhoneNumber(phone)
-  if (!phoneValidation.isValid) {
-    redirect(`/auth/verify?phone=${encodeURIComponent(phone)}&error=${encodeURIComponent('Invalid phone number')}`)
-  }
-
-  const otpValidation = validateOtpCode(otp)
-  if (!otpValidation.isValid) {
-    redirect(`/auth/verify?phone=${encodeURIComponent(phone)}&error=${encodeURIComponent(otpValidation.error || 'Invalid code')}`)
-  }
-
-  const { data, error } = await supabase.auth.verifyOtp({
-    phone: phoneValidation.sanitized!,
-    token: otpValidation.sanitized!,
-    type: 'sms',
-  })
-
-  if (error) {
-    console.error('OTP verification error:', error)
-    redirect(`/auth/verify?phone=${encodeURIComponent(phone)}&error=${encodeURIComponent('Invalid or expired code')}`)
-  }
-
-  // Create user profile if it doesn't exist
-  if (data.user) {
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', data.user.id)
-      .single()
-
-    if (!existingProfile) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          full_name: phone.replace(/\D/g, '').slice(-4), // Last 4 digits as temp name
-          role: 'runner',
-          phone_number: phoneValidation.sanitized
-        })
-      
-      if (profileError) {
-        console.error('Profile creation error:', profileError)
-      }
-    }
-  }
-
-  revalidatePath('/', 'layout')
-  redirect('/')
 }
 
 export async function login(formData: FormData) {
@@ -150,11 +66,14 @@ export async function signup(formData: FormData) {
   const { data: authData, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+    },
   })
 
   if (error) {
     // Don't expose detailed error messages
-    redirect(`/auth/login?error=${encodeURIComponent('Signup failed. Please try again.')}`)
+    redirect(`/auth/login?error=${encodeURIComponent(error.message)}`)
   }
 
   // Check if email confirmation is required
@@ -169,7 +88,7 @@ export async function signup(formData: FormData) {
       .insert({
         id: authData.user.id,
         full_name: email.split('@')[0].slice(0, 50), // Limit name length
-        role: 'runner'
+        role: 'customer' // Changed from 'runner' to 'customer' since runner is shelved
       })
     
     if (profileError) {
@@ -180,4 +99,3 @@ export async function signup(formData: FormData) {
     redirect('/')
   }
 }
-

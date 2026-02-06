@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
 
 // Input validation schema
 interface NotificationRequest {
@@ -7,15 +6,16 @@ interface NotificationRequest {
   whatsapp_id: string
   ticket_id?: string
   lead_id?: string
-  data?: any
+  data?: Record<string, unknown>
 }
 
-function validateNotificationRequest(body: any): NotificationRequest | null {
+function validateNotificationRequest(body: unknown): NotificationRequest | null {
   if (!body || typeof body !== 'object') {
     return null
   }
 
-  const { type, whatsapp_id, ticket_id, lead_id, data } = body
+  const bodyRecord = body as Record<string, unknown>
+  const { type, whatsapp_id, ticket_id, lead_id, data } = bodyRecord
 
   // Required fields validation
   if (!type || typeof type !== 'string' || type.trim().length === 0) {
@@ -32,7 +32,7 @@ function validateNotificationRequest(body: any): NotificationRequest | null {
   }
 
   // Type validation
-  const validTypes = ['welcome', 'offer', 'confirmation', 'reminder', 'status_update']
+  const validTypes = ['welcome', 'offer', 'confirmation', 'reminder', 'status_update', 'payment_received']
   if (!validTypes.includes(type.trim().toLowerCase())) {
     return null
   }
@@ -42,7 +42,7 @@ function validateNotificationRequest(body: any): NotificationRequest | null {
     whatsapp_id: whatsapp_id.trim(),
     ticket_id: ticket_id ? String(ticket_id).trim() : undefined,
     lead_id: lead_id ? String(lead_id).trim() : undefined,
-    data: data || {}
+    data: typeof data === 'object' && data !== null ? (data as Record<string, unknown>) : {}
   }
 }
 
@@ -70,7 +70,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -102,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     const result = await response.json()
     return NextResponse.json(result)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error sending notification:', error)
     return NextResponse.json(
       { error: 'Internal server error' },

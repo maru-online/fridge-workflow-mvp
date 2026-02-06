@@ -4,6 +4,19 @@ import { createClient } from "@/utils/supabase/server";
 import { formatDistanceToNow } from 'date-fns';
 import LocationLogger from "./LocationLogger";
 
+type Ticket = {
+  id: string
+  fridge_code: string
+  type: 'sell' | 'repair' | 'maintenance'
+  status: 'open' | 'assigned' | 'in_progress' | 'completed' | 'closed'
+  created_at: string
+  scheduled_for: string | null
+  leads?: {
+    customer_name: string | null
+    villages?: { name: string } | null
+  } | null
+}
+
 export default async function RunnerHomePage() {
   const supabase = await createClient();
   
@@ -11,7 +24,7 @@ export default async function RunnerHomePage() {
   const { data: { user } } = await supabase.auth.getUser();
   
   // Fetch assigned tickets for current user
-  const { data: tickets, error } = await supabase
+  const { data: tickets } = await supabase
     .from('tickets')
     .select(`
       *,
@@ -30,7 +43,7 @@ export default async function RunnerHomePage() {
     <div className="space-y-6">
       <div className="flex justify-between items-start">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Today's Route</h2>
+          <h2 className="text-xl font-bold text-slate-900">Today&apos;s Route</h2>
           <p className="text-slate-500 text-sm">
             {assignedTickets.length} {assignedTickets.length === 1 ? 'job' : 'jobs'} remaining
           </p>
@@ -40,7 +53,7 @@ export default async function RunnerHomePage() {
 
       <div className="space-y-4">
         {assignedTickets.length > 0 ? (
-          assignedTickets.map((ticket: any) => (
+          assignedTickets.map((ticket: Ticket) => (
             <div
               key={ticket.id}
               className="block bg-white rounded-xl border border-slate-200 shadow-sm active:scale-[0.98] transition-transform hover:border-brand-blue hover:shadow-md overflow-hidden"

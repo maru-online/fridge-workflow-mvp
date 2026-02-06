@@ -46,10 +46,13 @@ export async function retry<T>(
 /**
  * Check if error is network-related
  */
-export function isNetworkError(error: any): boolean {
+export function isNetworkError(error: unknown): boolean {
   if (!error) return false
 
-  const message = error.message?.toLowerCase() || ''
+  const message =
+    typeof error === 'object' && error !== null && 'message' in error
+      ? String((error as { message?: unknown }).message || '').toLowerCase()
+      : ''
   const networkKeywords = [
     'network',
     'fetch',

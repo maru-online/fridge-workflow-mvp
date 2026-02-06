@@ -80,7 +80,7 @@ export async function createTicketFromLead(leadId: number, ticketType: 'sell' | 
 
     // Upload QR code to Supabase Storage with secure filename
     const fileName = `qr-codes/${fridgeCode}.png`
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('photos')
       .upload(fileName, buffer, {
         contentType: 'image/png',
@@ -214,7 +214,7 @@ export async function updateTicketStatus(
     return { error: 'Ticket not found' }
   }
 
-  const updateData: any = { status }
+  const updateData: { status: typeof status; completed_at?: string } = { status }
   
   if (status === 'completed') {
     updateData.completed_at = new Date().toISOString()

@@ -1,6 +1,12 @@
 import { createClient } from '@/utils/supabase/server'
-import { Plus, Package, Truck, Clock } from 'lucide-react'
+import { Plus, Package, Clock } from 'lucide-react'
 import Link from 'next/link'
+
+type Lead = {
+  id: string
+  status: string | null
+  created_at: string | null
+}
 
 export default async function ClientDashboard() {
   const supabase = await createClient()
@@ -18,7 +24,7 @@ export default async function ClientDashboard() {
     .eq('id', user.id)
     .single()
 
-  let myLeads = []
+  let myLeads: Lead[] = []
   if (profile?.phone_number) {
     // Basic normalization: remove spaces, ensure partial match might work if formatting differs?
     // For MVP, we assume exact match or based on whatsapp_id if we linked it.
@@ -65,7 +71,7 @@ export default async function ClientDashboard() {
            <h2 className="font-bold text-slate-800 mb-3 px-1">Recent Activity</h2>
            <div className="space-y-3">
              {myLeads.length > 0 ? (
-               myLeads.map((lead: any) => (
+               myLeads.map((lead) => (
                  <div key={lead.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
                        <span className="font-mono text-xs text-slate-500">REF: {lead.id}</span>

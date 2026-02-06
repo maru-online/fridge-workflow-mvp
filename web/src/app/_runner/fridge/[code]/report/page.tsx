@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { ArrowLeft, Camera, Upload, AlertTriangle, Send } from 'lucide-react'
+import { ArrowLeft, Camera, Send } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 
@@ -27,7 +27,6 @@ export default function ReportIssuePage() {
     const [photo, setPhoto] = useState<File | null>(null)
     const [photoPreview, setPhotoPreview] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const [ticketId, setTicketId] = useState<string | null>(null)
 
     function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0]
@@ -72,8 +71,6 @@ export default function ReportIssuePage() {
                 throw ticketError
             }
 
-            setTicketId(ticket.id)
-
             // Upload photo if provided
             if (photo && ticket.id) {
                 const fileExt = photo.name.split('.').pop()
@@ -114,7 +111,7 @@ export default function ReportIssuePage() {
             }
             
             router.push('/runner') 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error submitting ticket:', error)
             alert('Failed to submit ticket. Please try again.')
         } finally {
@@ -141,7 +138,7 @@ export default function ReportIssuePage() {
                     {/* Categories */}
                     <div className="space-y-3">
                         <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">
-                            What's the problem?
+                            What&apos;s the problem?
                         </label>
                         <div className="grid grid-cols-2 gap-3">
                             {ISSUE_CATEGORIES.map((cat) => (

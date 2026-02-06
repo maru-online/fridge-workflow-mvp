@@ -1,6 +1,6 @@
 'use client'
 
-import { X, Image, MapPin, Calendar, User, QrCode, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+import { X, Image, MapPin, Calendar, User, QrCode } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { maskPhoneNumber } from '@/utils/data-masking'
 

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { formatDistanceToNow } from 'date-fns'
-import { Ticket, User, MapPin, Calendar, QrCode, CheckCircle, Clock, AlertCircle, Image, X } from 'lucide-react'
+import { Ticket, User, MapPin, Calendar, QrCode, CheckCircle, Clock, AlertCircle, Image } from 'lucide-react'
 import { assignTicket, updateTicketStatus } from './actions'
 import TicketDetailModal from './TicketDetailModal'
 
@@ -48,27 +48,7 @@ export default function TicketsPage() {
   const [ticketPhotos, setTicketPhotos] = useState<{ id: number; storage_path: string; caption: string | null; created_at: string }[]>([])
   const supabase = createClient()
 
-  useEffect(() => {
-    loadTickets()
-    loadRunners()
-    
-    // Subscribe to real-time updates
-    const channel = supabase
-      .channel('tickets-changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'tickets' },
-        () => {
-          loadTickets()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [])
-
-  async function loadTickets() {
+  const loadTickets = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('tickets')
@@ -90,7 +70,7 @@ export default function TicketsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [supabase])
 
   async function loadTicketPhotos(ticketId: string) {
     try {
@@ -113,7 +93,7 @@ export default function TicketsPage() {
     loadTicketPhotos(ticket.id)
   }
 
-  async function loadRunners() {
+  const loadRunners = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -125,7 +105,27 @@ export default function TicketsPage() {
     } catch (error) {
       console.error('Error loading runners:', error)
     }
-  }
+  }, [supabase])
+
+  useEffect(() => {
+    loadTickets()
+    loadRunners()
+    
+    // Subscribe to real-time updates
+    const channel = supabase
+      .channel('tickets-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'tickets' },
+        () => {
+          loadTickets()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [loadTickets, loadRunners, supabase])
 
   async function handleAssignTicket(ticketId: string, runnerId: string) {
     const result = await assignTicket(ticketId, runnerId)
@@ -149,7 +149,7 @@ export default function TicketsPage() {
     setDraggedTicket(ticket)
   }
 
-  function handleDragOver(e: React.DragEvent, status: TicketStatus) {
+  function handleDragOver(e: React.DragEvent) {
     e.preventDefault()
   }
 
@@ -187,7 +187,7 @@ export default function TicketsPage() {
           <div
             key={column.id}
             className={`rounded-lg border-2 ${column.color} p-4 min-h-[600px]`}
-            onDragOver={(e) => handleDragOver(e, column.id)}
+            onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, column.id)}
           >
             <div className="flex items-center justify-between mb-4">
@@ -221,6 +221,16 @@ export default function TicketsPage() {
           </div>
         ))}
       </div>
+      {selectedTicket && (
+        <TicketDetailModal
+          ticket={selectedTicket}
+          photos={ticketPhotos}
+          onClose={() => {
+            setSelectedTicket(null)
+            setTicketPhotos([])
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -29,7 +29,6 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get('code')
   const error = requestUrl.searchParams.get('error')
   const errorDescription = requestUrl.searchParams.get('error_description')
-  const state = requestUrl.searchParams.get('state')
   const origin = requestUrl.origin
 
   // Handle OAuth errors
@@ -79,7 +78,7 @@ export async function GET(request: Request) {
         .insert({
           id: data.user.id,
           full_name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
-          role: 'runner'
+          role: 'customer'
         })
       
       if (profileError) {
@@ -89,7 +88,8 @@ export async function GET(request: Request) {
     }
 
     // URL to redirect to after sign in process completes
-    return NextResponse.redirect(`${origin}/ops`)
+    // Redirect to the root page, which handles role-based routing
+    return NextResponse.redirect(`${origin}/`)
   } catch (error) {
     console.error('Unexpected error in OAuth callback:', error)
     return NextResponse.redirect(`${origin}/auth/login?error=${encodeURIComponent('Authentication error')}`)

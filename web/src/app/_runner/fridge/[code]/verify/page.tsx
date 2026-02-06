@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { ArrowLeft, Camera, CheckCircle, Loader2, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -19,6 +19,11 @@ interface Ticket {
     } | null
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+    if (error instanceof Error && error.message) return error.message
+    return fallback
+}
+
 export default function VerifyPaymentPage() {
     const params = useParams()
     const router = useRouter()
@@ -33,11 +38,7 @@ export default function VerifyPaymentPage() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    useEffect(() => {
-        loadTicket()
-    }, [code])
-
-    async function loadTicket() {
+    const loadTicket = useCallback(async () => {
         try {
             const { data, error } = await supabase
                 .from('tickets')
@@ -53,13 +54,17 @@ export default function VerifyPaymentPage() {
 
             if (error) throw error
             setTicket(data)
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error loading ticket:', err)
             setError('Failed to load ticket information.')
         } finally {
             setLoading(false)
         }
-    }
+    }, [code, supabase])
+
+    useEffect(() => {
+        loadTicket()
+    }, [loadTicket])
 
     function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0]
@@ -105,7 +110,7 @@ export default function VerifyPaymentPage() {
                 const fileExt = paymentProof.name.split('.').pop()
                 const fileName = `payment-proofs/${ticket.fridge_code}-${Date.now()}.${fileExt}`
                 
-                const { data: uploadData, error: uploadError } = await supabase.storage
+                const { error: uploadError } = await supabase.storage
                     .from('photos')
                     .upload(fileName, paymentProof, {
                         contentType: paymentProof.type,
@@ -187,9 +192,9 @@ export default function VerifyPaymentPage() {
 
             // Redirect to success page or back to runner home
             router.push(`/runner/fridge/${code}?verified=true`)
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error completing payment verification:', err)
-            setError(err.message || 'Failed to complete payment verification. Please try again.')
+            setError(getErrorMessage(err, 'Failed to complete payment verification. Please try again.'))
         } finally {
             setIsSubmitting(false)
         }

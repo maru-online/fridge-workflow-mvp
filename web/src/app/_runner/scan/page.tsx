@@ -44,18 +44,22 @@ export default function ScanPage() {
                     // Successfully scanned
                     handleScanSuccess(decodedText)
                 },
-                (errorMessage) => {
+                () => {
                     // Ignore scanning errors (they're frequent during scanning)
                 }
             )
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Error starting scanner:', err)
             setScanning(false)
             
-            if (err.name === 'NotAllowedError' || err.message?.includes('permission')) {
+            const errInfo =
+                typeof err === 'object' && err !== null
+                    ? (err as { name?: string; message?: string })
+                    : undefined
+            if (errInfo?.name === 'NotAllowedError' || errInfo?.message?.includes('permission')) {
                 setPermissionDenied(true)
                 setError('Camera permission denied. Please allow camera access and try again.')
-            } else if (err.name === 'NotFoundError') {
+            } else if (errInfo?.name === 'NotFoundError') {
                 setError('No camera found. Please connect a camera and try again.')
             } else {
                 setError('Failed to start camera. Please try again.')

@@ -64,7 +64,7 @@ export default async function VerifyPage(props: { searchParams: Promise<{ phone?
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-slate-600 mb-2">Didn't receive the code?</p>
+          <p className="text-sm text-slate-600 mb-2">Didn&apos;t receive the code?</p>
           <form action={signUpWithPhone} className="inline">
             <input type="hidden" name="phone" value={phone} />
             <button className="text-green-600 hover:text-green-700 font-medium text-sm hover:underline">
